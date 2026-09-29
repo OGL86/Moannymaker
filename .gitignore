@@ -1,0 +1,8 @@
+.env
+config.yaml
+*.json
+data/
+KILL
+__pycache__/
+.pytest_cache/
+*.csv

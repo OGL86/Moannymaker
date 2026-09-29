@@ -1,0 +1,8 @@
+.env
+*.json
+config.yaml
+data/
+KILL
+.git
+__pycache__/
+.pytest_cache/

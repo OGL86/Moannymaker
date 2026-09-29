@@ -1,0 +1,109 @@
+# memebot – konfigurasjon
+# Kopier til config.yaml og tilpass. Hemmeligheter (nøkler, tokens) ligger i .env, aldri her.
+
+mode: paper              # paper | live   (live krever også --live-flagg på kommandolinjen)
+loop_minutes: 15         # hvor ofte boten skanner
+start_capital_usd: 1000  # kapital boten får. Vokser KUN fra realisert gevinst.
+
+buckets:                 # andel av kapital per bøtte (må summere til 1.0)
+  core: 0.60
+  rotation: 0.25
+  shots: 0.15
+  copy: 0.0              # kopitrading. Gi den en andel (f.eks. flytt 0.10 fra core) når du slår den på
+
+# Etablerte community-coins (Solana mint-adresser). Fyll inn selv.
+core_tokens: []
+#  - mint: "<MINT_ADRESSE>"
+#    symbol: "EKSEMPEL"
+
+filters:                 # sikkerhetsfilter for shots-kandidater
+  min_age_days: 14
+  min_liquidity_usd: 150000
+  min_volume_24h_usd: 100000
+  max_top10_holder_pct: 35      # ekskl. likviditetspool-kontoer der det kan identifiseres
+  require_mint_authority_revoked: true
+  require_freeze_authority_revoked: true
+  require_prior_drawdown_pct: 70  # må ha overlevd et fall på minst X % fra topp
+  max_price_impact_pct: 1.5       # fra Jupiter-quote før kjøp
+
+core_rules:
+  tranches: 3
+  min_days_between_tranches: 5   # tranjene spres ut i tid (artikkelen: én per uke)
+  range_days: 30
+  buy_zone_pct: 25        # kjøp når prisen er i nederste 25 % av 30-dagers range
+  red_day_only: true
+  take_profit_pct: 100    # selg 25 % ved +100 %
+  take_profit_fraction: 0.25
+  stop_loss_pct: null     # null = ingen stop (artikkelens regel). Sett f.eks. 60 for stop.
+
+rotation_rules:
+  enabled: true
+  high_zone_pct: 90       # coin A over 90 % av range ...
+  low_zone_pct: 10        # ... og coin B under 10 % av range
+  move_fraction: 0.25     # flytt 25 % fra A til B
+  cooldown_days: 7        # maks én core-rotasjon per 7 dager
+
+shots_rules:
+  max_open: 5
+  size_usd: null          # null = shots-bøtte / max_open
+  take_profits:           # [prosent gevinst, andel av opprinnelig posisjon]
+    - [100, 0.25]
+    - [200, 0.25]
+  breakeven_stop_after_first_tp: true
+  dead_at_drawdown_pct: 70   # aldri snitt ned under dette
+  stop_loss_pct: null        # valgfri hard stop for shots
+
+shots_entry:               # inngangssignal for kandidater som har passert filteret
+  min_volume_ratio: 1.5    # dagens volum >= 1.5x snitt siste 7 dager (dagens candle er uferdig)
+  require_green_day: true
+  min_below_ath_pct: 50    # prisen må være minst 50 % under all-time-high
+
+# Tokens for rotasjonsbøtta (f.eks. launchpad-tokens). Samme format som core_tokens.
+rotation_tokens: []
+
+risk:
+  max_trades_per_month: 30
+  max_position_usd: 400
+  max_daily_loss_usd: 150
+  slippage_bps: 100          # 1 %
+  priority_fee_lamports: 50000
+  kill_switch_file: data/KILL  # finnes denne fila, stopper boten all handel (dashboardet har knapp)
+
+execution:
+  provider: pumpportal       # pumpportal (Local API, 0,5 %) | jupiter
+  pumpportal_pool: auto      # pump | pump-amm | raydium | raydium-cpmm | launchlab | bonk | auto
+  jupiter_base_url: "https://lite-api.jup.ag/swap/v1"
+  paper_fee_pct: 1.0         # simulert gebyr + slippage per side i papirmodus
+  min_sol_reserve: 0.05      # SOL som alltid blir liggende til nettverksgebyrer
+
+data:
+  dexscreener_base_url: "https://api.dexscreener.com"
+  geckoterminal_base_url: "https://api.geckoterminal.com/api/v2"
+  scan_sources: [pumpportal_migrations, geckoterminal_trending]
+  max_candidate_age_days: 90   # migrerte tokens eldre enn dette vurderes ikke lenger
+  max_candidates_per_run: 25   # begrenser API-kall per runde
+  extra_watchlist: []          # ekstra mints du vil at filteret skal vurdere
+
+storage:
+  db_path: data/memebot.sqlite
+
+notify:
+  telegram: true           # krever TELEGRAM_BOT_TOKEN og TELEGRAM_CHAT_ID i .env
+
+# Kopitrading: følg wallets på pump.fun og handle når de handler (egen prosess: python -m memebot copy).
+# Krever PUMPPORTAL_API_KEY med en koblet wallet (min. 0,02 SOL). Koster 0,01 SOL per 10 000 hendelser.
+copytrade:
+  enabled: false
+  wallets: []               # - {address: "<WALLET>", label: "navn"}
+  mode: mirror              # mirror = kopier hvert lederkjøp | consensus = kjøp først når flere ledere har kjøpt samme coin
+  consensus_min_wallets: 2
+  consensus_window_minutes: 30
+  buy_usd: 25               # fast beløp per kopikjøp
+  min_leader_sol: 0.5       # ignorer lederkjøp mindre enn dette (testkjøp/støv)
+  max_open: 5
+  max_trades_per_day: 40    # egen grense – kopitrading teller ikke mot månedsgrensen
+  mirror_sells: true        # selg samme andel som lederen selger
+  take_profits: [[100, 0.5]]   # i tillegg: selg 50 % ved +100 %
+  stop_loss_pct: 50
+  max_hold_hours: 48        # selg alt etter så mange timer uansett
+  paper_latency_penalty_pct: 3        # papirmodus: vi får dårligere pris enn lederen

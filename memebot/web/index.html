@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memebot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mist:#EEF2F5; --paper:#FFFFFF; --ink:#16233B; --muted:#5B6B80; --line:#CCD5DF;
+  --buy:#1E7A5C; --buy-soft:#DCEFE7; --sell:#B5432C; --sell-soft:#F6E1DB; --warn:#9A6414; --warn-soft:#F7ECD6;
+  --core:#2F5D8A; --rotation:#7A93AE; --shots:#C08A2E; --copy:#6A4C93;
+  --radius-lg:14px; --radius-sm:8px;
+  --num:"Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --text:"Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --mist:#101826; --paper:#172235; --ink:#E6ECF3; --muted:#9AA9BC; --line:#2A3950;
+    --buy:#4CC49A; --buy-soft:#153A31; --sell:#EE7B63; --sell-soft:#3C2019; --warn:#E3B45C; --warn-soft:#3A2E15;
+    --core:#6E9CCB; --rotation:#8FA6BF; --shots:#E0AE55; --copy:#A98BD1; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{transition:none!important} }
+body{margin:0;background:var(--mist);color:var(--ink);font:16px/1.5 var(--text)}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--core);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* navigasjon */
+nav{position:sticky;top:0;z-index:5;background:var(--mist);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;align-items:center;overflow-x:auto;height:52px}
+nav .brand{font:700 20px var(--num);margin-right:auto;letter-spacing:.2px}
+nav a{padding:6px 10px;border-radius:var(--radius-sm);text-decoration:none;color:var(--muted);white-space:nowrap;font-weight:500}
+nav a:hover{background:var(--paper);color:var(--ink)}
+
+/* statuslinje */
+.status{margin:24px 0 8px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.status h1{font:600 clamp(24px,4vw,34px)/1.15 var(--num);margin:0}
+.status p{margin:4px 0 0;color:var(--muted)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:10px;vertical-align:2px;background:var(--muted)}
+.dot.ok{background:var(--buy);box-shadow:0 0 0 4px var(--buy-soft)}
+.dot.bad{background:var(--sell);box-shadow:0 0 0 4px var(--sell-soft)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 4px var(--warn-soft)}
+.btn{border:0;border-radius:var(--radius-sm);padding:12px 18px;font-weight:600;cursor:pointer}
+.btn-stop{background:var(--sell);color:#fff;font-size:17px;padding:14px 22px}
+.btn-go{background:var(--buy);color:#fff;font-size:17px;padding:14px 22px}
+.btn-quiet{background:transparent;border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:wait}
+.banner{border-radius:var(--radius-lg);padding:14px 18px;margin:12px 0;font-weight:500}
+.banner.stop{background:var(--sell-soft);color:var(--sell)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner.info{background:var(--paper);border:1px solid var(--line)}
+
+section{margin:36px 0}
+h2{font:600 24px/1.2 var(--num);margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px}
+
+/* kom i gang */
+.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+.steps li{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.steps li:first-child{border-top:0}
+.steps .mark{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 15px var(--num);border:2px solid var(--line);color:var(--muted)}
+.steps li.done .mark{background:var(--buy);border-color:var(--buy);color:#fff}
+.steps li.done .t{color:var(--muted);text-decoration:line-through}
+.steps .h{color:var(--muted);font-size:14px}
+.steps code{background:var(--mist);padding:1px 6px;border-radius:4px;font-size:14px}
+
+/* verdi */
+.value{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:24px;align-items:end}
+.big{font:700 clamp(40px,7vw,64px)/1 var(--num);letter-spacing:-.5px}
+.change{font:600 20px var(--num);margin-top:6px}
+.up{color:var(--buy)} .down{color:var(--sell)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:16px;color:var(--muted);font-size:15px}
+.facts b{color:var(--ink);font:600 17px var(--num)}
+.chart svg{width:100%;height:160px;display:block}
+.chart .empty{height:160px;display:grid;place-items:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--radius-sm);text-align:center;padding:12px}
+
+/* bøttestolpe – signaturelementet */
+.bar{display:flex;height:64px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);background:var(--paper)}
+.seg{position:relative;display:flex;min-width:48px}
+.seg + .seg{border-left:3px solid var(--paper)}
+.seg .fill{height:100%}
+.seg .cash{flex:1;height:100%;background-image:repeating-linear-gradient(135deg,transparent 0 6px,var(--line) 6px 7px)}
+.seg .lbl{position:absolute;left:10px;top:8px;font:600 15px var(--num);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:16px}
+.legend .k{display:flex;gap:10px;align-items:baseline}
+.legend .sw{width:12px;height:12px;border-radius:3px;flex:none;transform:translateY(1px)}
+.legend h3{font:600 18px var(--num);margin:0}
+.legend p{margin:2px 0 6px;color:var(--muted);font-size:14px}
+.legend dl{margin:0;font-size:15px}
+.legend dl div{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
+.legend dt{color:var(--muted)} .legend dd{margin:0;text-align:right;font:600 16px var(--num)}
+.keyline{display:flex;gap:18px;margin-top:10px;color:var(--muted);font-size:14px;flex-wrap:wrap}
+.keyline span::before{content:"";display:inline-block;width:14px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.keyline .i::before{background:var(--core)}
+.keyline .c::before{background-image:repeating-linear-gradient(135deg,transparent 0 3px,var(--muted) 3px 4px);border:1px solid var(--line)}
+
+/* posisjoner */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px;border-left-width:5px}
+.card.core{border-left-color:var(--core)} .card.rotation{border-left-color:var(--rotation)} .card.shots{border-left-color:var(--shots)} .card.copy{border-left-color:var(--copy)}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card .sym{font:700 22px var(--num)}
+.card .tag{font-size:13px;color:var(--muted)}
+.card .pnl{font:700 26px var(--num);margin:6px 0 2px}
+.card .row{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.card .row b{color:var(--ink);font:600 15px var(--num)}
+.card .note{margin-top:10px;font-size:14px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--mist)}
+.card .note.dead{background:var(--sell-soft);color:var(--sell)}
+.progress{height:6px;background:var(--mist);border-radius:3px;margin-top:10px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--buy)}
+
+/* aktivitet */
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
+.feed li:first-child{border-top:0}
+.pill{font:600 13px var(--num);padding:3px 8px;border-radius:999px;min-width:54px;text-align:center}
+.pill.buy{background:var(--buy-soft);color:var(--buy)} .pill.sell{background:var(--sell-soft);color:var(--sell)}
+.feed .what{font-weight:500}
+.feed .why{color:var(--muted);font-size:14px}
+.feed .when{color:var(--muted);font-size:14px;white-space:nowrap}
+.feed a{font-size:13px;color:var(--muted)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.log li{font-size:14px;padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:10px;list-style:none}
+.log{margin:0;padding:0}
+.log .when{color:var(--muted);white-space:nowrap}
+.log .risk{color:var(--warn)} .log .error{color:var(--sell)}
+.rejects li:first-child,.log li:first-child{border-top:0}
+.rejects li{font-size:14px;padding:6px 0;border-top:1px solid var(--line);list-style:none}
+.rejects{margin:0;padding:0}
+.rejects b{font-family:var(--num)}
+.emptytxt{color:var(--muted);margin:0}
+
+/* innstillinger */
+form .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+label{display:block;font-weight:600;margin-bottom:4px}
+.hint{display:block;color:var(--muted);font-size:13px;font-weight:400;margin-top:2px}
+input[type=number],input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--mist)}
+.err{color:var(--sell);font-size:13px;min-height:18px}
+.tokens{list-style:none;padding:0;margin:8px 0}
+.tokens li{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:6px;gap:8px}
+.tokens code{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1}
+.found{font-size:14px;margin-top:6px;min-height:20px}
+.savebar{display:flex;gap:12px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:var(--radius-sm);opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw}
+.toast.show{opacity:1}
+
+/* wallets jeg følger */
+.wtable{width:100%;border-collapse:collapse;font-size:15px}
+.wtable th{text-align:left;font-weight:600;color:var(--muted);font-size:13px;padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
+.wtable td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.wtable tr:last-child td{border-bottom:0}
+.wtable .num{font:600 16px var(--num);text-align:right;white-space:nowrap}
+.wtable th.num{text-align:right;font:600 13px var(--text)}
+.wname b{font:600 17px var(--num)} .wname code{display:block;color:var(--muted);font-size:12px}
+.verdict{font-size:14px;color:var(--muted)}
+.verdict.good{color:var(--buy)} .verdict.bad{color:var(--sell)}
+.switch{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600}
+.switch input{width:20px;height:20px;margin-top:2px;accent-color:var(--buy)}
+.radio{display:grid;gap:8px;margin-top:6px}
+.radio label{display:flex;gap:10px;align-items:flex-start;font-weight:500;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;margin:0}
+.radio input{margin-top:4px;accent-color:var(--core)}
+.radio .hint{display:block}
+fieldset{border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px;margin:24px 0 0}
+legend{font:600 18px var(--num);padding:0 6px}
+.sum{font:600 15px var(--num)} .sum.bad{color:var(--sell)}
+.addrow.two input:first-child{flex:2} .addrow.two input:nth-child(2){flex:1}
+@media (max-width:720px){
+  .wtable thead{display:none}
+  .wtable tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .wtable td{border:0;padding:0}
+  .wtable td.wname,.wtable td.vcell{grid-column:1/-1}
+  .wtable .num{text-align:left}
+  .wtable .num::before{content:attr(data-l) " ";font:400 13px var(--text);color:var(--muted)}
+}
+
+/* ordliste */
+.glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 32px;margin:0}
+.glossary dt{font:600 17px var(--num)} .glossary dd{margin:2px 0 0;color:var(--muted);font-size:15px}
+footer{color:var(--muted);font-size:13px;padding:24px 0 48px}
+
+@media (max-width:720px){
+  .status{grid-template-columns:1fr}
+  .status .btn{width:100%}
+  .value{grid-template-columns:1fr}
+  .twocol{grid-template-columns:1fr}
+  .seg .lbl{display:none}
+  .feed li{grid-template-columns:auto 1fr}
+  .feed .when{grid-column:2;grid-row:2;margin-top:-6px}
+}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <span class="brand">memebot</span>
+  <a href="#oversikt">Oversikt</a><a href="#posisjoner">Coins jeg eier</a><a href="#aktivitet">Hva har skjedd</a><a href="#folger">Wallets jeg følger</a><a href="#innstillinger">Innstillinger</a><a href="#ordliste">Ordliste</a>
+</div></nav>
+
+<main class="wrap">
+  <div class="status" id="oversikt">
+    <div>
+      <h1><span class="dot" id="dot"></span><span id="statusText">Laster …</span></h1>
+      <p id="statusSub"></p>
+    </div>
+    <button class="btn btn-stop" id="killBtn" hidden>Stopp all handel</button>
+  </div>
+  <div id="banners"></div>
+
+  <section id="start" hidden>
+    <h2>Kom i gang</h2>
+    <p class="lead">Gjør disse stegene i rekkefølge. Boten kjører i øvingsmodus til du bevisst slår på ekte handel.</p>
+    <div class="panel"><ol class="steps" id="steps"></ol></div>
+  </section>
+
+  <section>
+    <div class="value">
+      <div>
+        <div class="lead" style="margin:0">Verdien av alt boten styrer nå</div>
+        <div class="big" id="equity">–</div>
+        <div class="change" id="change"></div>
+      </div>
+      <div class="chart" id="chart"></div>
+    </div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section>
+    <h2>Slik er pengene fordelt</h2>
+    <p class="lead">Pengene er delt i tre potter med hver sin jobb. En pott blir bare større når boten faktisk har solgt med gevinst, aldri av at noe bare har steget på papiret.</p>
+    <div class="bar" id="bar" role="img"></div>
+    <div class="keyline"><span class="i">Kjøpt inn</span><span class="c">Ledig, venter på riktig pris</span></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section id="posisjoner">
+    <h2>Coins jeg eier</h2>
+    <p class="lead">Hver boks er én coin. Prosenten viser hvor mye den har gått opp eller ned siden boten kjøpte.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="aktivitet">
+    <h2>Hva har skjedd</h2>
+    <p class="lead">Alle kjøp og salg, med forklaring på hvorfor boten gjorde det.</p>
+    <div class="panel"><ul class="feed" id="feed"></ul></div>
+  </section>
+
+  <section id="folger">
+    <h2>Wallets jeg følger</h2>
+    <p class="lead">Kopitrading: når en av disse kjøper en coin, kjøper boten også – og selger når de selger. Tallene under er det boten selv har sett de siste 30 dagene, ikke det walleten skryter av.</p>
+    <div id="copyBanner"></div>
+    <div class="panel" id="wallets"></div>
+  </section>
+
+  <section>
+    <div class="twocol">
+      <div>
+        <h2>Hvorfor boten sa nei</h2>
+        <p class="lead">Coins som ble sjekket i siste runde, men ikke bestod sikkerhetskravene.</p>
+        <div class="panel"><ul class="rejects" id="rejects"></ul></div>
+      </div>
+      <div>
+        <h2>Logg</h2>
+        <p class="lead">Beskjeder fra boten. Gult er stoppet av sikkerhetsreglene, rødt er feil.</p>
+        <div class="panel"><ul class="log" id="log"></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="innstillinger">
+    <h2>Innstillinger</h2>
+    <p class="lead">Endringer brukes fra neste runde. Om boten handler med ekte penger kan ikke endres her – det krever en bevisst endring i config.yaml og omstart.</p>
+    <form class="panel" id="settings" novalidate>
+      <div class="grid">
+        <div><label for="s_cap">Startbeløp (USD)<span class="hint">Det du har satt inn. Settes aldri opp for å «ta igjen» tap.</span></label>
+          <input type="number" id="s_cap" min="10" step="any"><div class="err" data-for="start_capital_usd"></div></div>
+        <div><label for="s_pos">Maks per kjøp (USD)<span class="hint">Boten kjøper aldri for mer enn dette i én handel.</span></label>
+          <input type="number" id="s_pos" min="1" step="any"><div class="err" data-for="max_position_usd"></div></div>
+        <div><label for="s_loss">Maks tap per dag (USD)<span class="hint">Nås denne, kjøper boten ingenting mer den dagen.</span></label>
+          <input type="number" id="s_loss" min="1" step="any"><div class="err" data-for="max_daily_loss_usd"></div></div>
+        <div><label for="s_trades">Maks handler per måned<span class="hint">Færre handler betyr mindre gebyrer.</span></label>
+          <input type="number" id="s_trades" min="1" step="1"><div class="err" data-for="max_trades_per_month"></div></div>
+        <div><label for="s_loop">Sjekk markedet hvert … minutt<span class="hint">15 er et godt utgangspunkt.</span></label>
+          <input type="number" id="s_loop" min="5" step="1"><div class="err" data-for="loop_minutes"></div></div>
+      </div>
+
+      <div class="grid" style="margin-top:24px">
+        <div>
+          <label>Grunnmur-coins</label>
+          <span class="hint">Etablerte coins med mange eiere som boten skal kjøpe billig og holde. Lim inn coinens adresse.</span>
+          <ul class="tokens" id="core_list"></ul>
+          <div class="addrow"><input type="text" id="core_add" placeholder="Lim inn adresse" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-quiet" data-add="core">Legg til</button></div>
+          <div class="found" id="core_found"></div>
+          <div class="err" data-for="core_tokens"></div>
+        </div>
+        <div>
+          <label>Rotasjons-coins</label>
+          <span class="hint">Valgfritt. For eksempel launchpad-tokens som boten kjøper nederst og selger øverst i prisområdet.</span>
+          <ul class="tokens" id="rotation_list"></ul>
+          <div class="addrow"><input type="text" id="rotation_add" placeholder="Lim inn adresse" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-quiet" data-add="rotation">Legg til</button></div>
+          <div class="found" id="rotation_found"></div>
+          <div class="err" data-for="rotation_tokens"></div>
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Fordeling av pottene</legend>
+        <span class="hint">Hvor stor del av startbeløpet hver pott får. Må bli 100 % til sammen.</span>
+        <div class="grid" style="margin-top:12px">
+          <div><label for="b_core">Grunnmur (%)</label><input type="number" id="b_core" min="0" max="100" step="1" data-bucket="core"><div class="err" data-for="bucket_core"></div></div>
+          <div><label for="b_rotation">Rotasjon (%)</label><input type="number" id="b_rotation" min="0" max="100" step="1" data-bucket="rotation"><div class="err" data-for="bucket_rotation"></div></div>
+          <div><label for="b_shots">Småsatsinger (%)</label><input type="number" id="b_shots" min="0" max="100" step="1" data-bucket="shots"><div class="err" data-for="bucket_shots"></div></div>
+          <div><label for="b_copy">Kopitrading (%)</label><input type="number" id="b_copy" min="0" max="100" step="1" data-bucket="copy"><div class="err" data-for="bucket_copy"></div></div>
+        </div>
+        <p class="sum" id="bsum"></p><div class="err" data-for="buckets"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Kopitrading</legend>
+        <label class="switch"><input type="checkbox" id="c_on"><span>Kopier handlene til walletene jeg følger
+          <span class="hint">Av = boten følger bare med og samler statistikk, men handler ikke. Start med av i en uke eller to.</span></span></label>
+        <div class="grid" style="margin-top:16px">
+          <div>
+            <label>Når skal boten kjøpe?</label>
+            <div class="radio">
+              <label><input type="radio" name="c_mode" value="mirror"><span>Med en gang én av dem kjøper<span class="hint">Raskest, men flest handler og flest tap.</span></span></label>
+              <label><input type="radio" name="c_mode" value="consensus"><span>Først når flere av dem har kjøpt samme coin<span class="hint">Færre og tryggere handler, men litt senere inne.</span></span></label>
+            </div>
+            <div class="err" data-for="copy_mode"></div>
+          </div>
+          <div><label for="c_buy">Beløp per kopikjøp (USD)<span class="hint">Samme beløp hver gang, uansett hvor mye lederen kjøper for.</span></label>
+            <input type="number" id="c_buy" min="1" step="any"><div class="err" data-for="copy_buy_usd"></div></div>
+        </div>
+        <label style="margin-top:16px">Wallets å følge</label>
+        <span class="hint">Lim inn walletadressen og gi den et navn du kjenner igjen. Finn kandidater på leaderboards – men se på tallene under «Wallets jeg følger» før du slår på kopiering.</span>
+        <ul class="tokens" id="copy_list"></ul>
+        <div class="addrow two"><input type="text" id="copy_add" placeholder="Walletadresse" autocomplete="off" spellcheck="false">
+          <input type="text" id="copy_label" placeholder="Navn (valgfritt)" maxlength="30">
+          <button type="button" class="btn btn-quiet" id="copyAddBtn">Legg til</button></div>
+        <div class="err" data-for="copy_wallets"></div>
+      </fieldset>
+
+      <div class="err" data-for="general"></div>
+      <div class="savebar">
+        <button class="btn btn-go" type="submit" id="saveBtn">Lagre innstillinger</button>
+        <span class="hint" id="dirty"></span>
+      </div>
+    </form>
+  </section>
+
+  <section id="ordliste">
+    <h2>Ordliste</h2>
+    <p class="lead">Ordene boten bruker, forklart enkelt.</p>
+    <dl class="glossary panel">
+      <div><dt>Øvingsmodus</dt><dd>Boten later som den handler. Ingen ekte penger flyttes. Bruk denne i flere uker før du vurderer ekte handel.</dd></div>
+      <div><dt>Grunnmur</dt><dd>Den største potten (60 %). Etablerte coins som kjøpes i tre omganger når prisen er lav, og holdes i uker eller måneder.</dd></div>
+      <div><dt>Rotasjon</dt><dd>Når én coin er dyr og en annen billig i forhold til sitt vanlige prisområde, flyttes litt penger fra den dyre til den billige.</dd></div>
+      <div><dt>Småsatsinger</dt><dd>Små beløp (15 %) i nyere coins som har bestått sikkerhetssjekken. De fleste går til null – noen få skal betale for resten.</dd></div>
+      <div><dt>Prisområde</dt><dd>Laveste og høyeste pris de siste 30 dagene. «Nær bunnen» betyr at prisen er i den nederste firedelen.</dd></div>
+      <div><dt>Gevinstsikring</dt><dd>Når en coin har doblet seg, selges en fjerdedel. Da er noe av gevinsten trygg uansett hva som skjer videre.</dd></div>
+      <div><dt>Sikkerhetssjekk</dt><dd>Boten avviser coins som er yngre enn 14 dager, har lite handel, få eiere som eier nesten alt, eller der skaperen fortsatt kan lage nye coins eller fryse din.</dd></div>
+      <div><dt>Kopitrading</dt><dd>Boten følger utvalgte wallets og kjøper og selger når de gjør det. Du kommer alltid litt etter dem, så du får en litt dårligere pris.</dd></div>
+      <div><dt>Treffprosent</dt><dd>Hvor mange av coinene en wallet har solgt helt ut av som ga gevinst. Mange gode tradere har under 50 % – de tjener mye på de få som går bra.</dd></div>
+      <div><dt>Stopp all handel</dt><dd>Nødbremsen. Boten fortsetter å se på markedet, men kjøper og selger ingenting før du starter den igjen.</dd></div>
+    </dl>
+  </section>
+</main>
+<footer class="wrap">Oppdateres automatisk hvert 20. sekund. Dette er et verktøy, ikke finansiell rådgivning – du bestemmer og du bærer risikoen.</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const TOKEN = new URLSearchParams(location.search).get("token");
+const H = {"X-Memebot":"1","Content-Type":"application/json", ...(TOKEN ? {"X-Token":TOKEN} : {})};
+const q = TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : "";
+const nf = new Intl.NumberFormat("nb-NO",{maximumFractionDigits:2});
+const usd = v => v==null ? "–" : "$" + new Intl.NumberFormat("nb-NO",{maximumFractionDigits: Math.abs(v)<10?2:0}).format(v);
+const usdS = v => v==null ? "–" : (v>=0?"+":"−") + usd(Math.abs(v));
+const pct = v => v==null ? "–" : (v>=0?"+":"−") + nf.format(Math.abs(v).toFixed(1)) + " %";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LABEL = {core:"Grunnmur", rotation:"Rotasjon", shots:"Småsatsing", copy:"Kopitrading"};
+const COLOR = {core:"var(--core)", rotation:"var(--rotation)", shots:"var(--shots)", copy:"var(--copy)"};
+
+function ago(ts){
+  const s = Math.max(0, Date.now()/1000 - ts);
+  if (s < 90) return "akkurat nå";
+  if (s < 3600) return `for ${Math.round(s/60)} min siden`;
+  if (s < 86400) return `for ${Math.round(s/3600)} t siden`;
+  return new Date(ts*1000).toLocaleString("nb-NO",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+}
+
+// Oversetter bot-begrunnelser til vanlig språk
+function explain(r){
+  if(!r) return "";
+  let m;
+  if (m = r.match(/tranche (\d)\/(\d) i range (\d+)%/)) return `Kjøp ${m[1]} av ${m[2]}: prisen er nær bunnen av sitt vanlige område (${m[3]} % opp fra bunnen)`;
+  if (m = r.match(/^TP(\d)? ?\+(\d+)%/)) return `Sikret gevinst: coinen var opp ${m[2]} % siden kjøp`;
+  if (m = r.match(/rotasjon → (\S+)/)) return `Solgte litt fordi prisen er høy, for å kjøpe ${m[1]} som er billig nå`;
+  if (m = r.match(/rotasjon ← (\S+)/)) return `Kjøpte for pengene fra ${m[1]} fordi denne er billig nå`;
+  if (r.startsWith("break-even")) return "Solgte resten for ikke å tape penger på den etter en gevinstsikring";
+  if (m = r.match(/^stop (-?\d+)%/)) return `Stopp-tap: coinen var ned ${m[1].replace("-","")} %`;
+  if (r.startsWith("shot-inngang")) return "Ny småsatsing: bestod sikkerhetssjekken, og handelen i coinen øker";
+  if (m = r.match(/range-bunn (\d+)%/)) return `Kjøpt nær bunnen av prisområdet (${m[1]} %)`;
+  if (m = r.match(/range-topp (\d+)%/)) return `Solgt nær toppen av prisområdet (${m[1]} %)`;
+  if (m = r.match(/^kopi: (.+) kjøpte for ([\d.]+) SOL/)) return `Kopierte ${m[1]}, som kjøpte for ${m[2]} SOL`;
+  if (m = r.match(/^kopi: (\d+) ledere kjøpte innen (\d+) min/)) return `${m[1]} av walletene du følger kjøpte innen ${m[2]} minutter`;
+  if (m = r.match(/^kopi: (.+) solgte (\d+) %/)) return `${m[1]} solgte ${m[2]} % av sin beholdning – boten solgte like stor andel`;
+  if (m = r.match(/^maks holdetid (\d+)/)) return `Solgt fordi den er holdt i ${m[1]} timer (maksgrensen)`;
+  return r;
+}
+
+function renderStatus(s){
+  const dot = $("#dot"), t = $("#statusText"), sub = $("#statusSub"), b = $("#killBtn");
+  const modeTxt = s.mode === "live" ? "med ekte penger" : "i øvingsmodus – ingen ekte penger brukes";
+  if (s.killed){ dot.className="dot bad"; t.textContent = "Handel er stoppet"; }
+  else if (s.status==="running"){ dot.className="dot ok"; t.textContent = `Boten går ${modeTxt}`; }
+  else if (s.status==="stale"){ dot.className="dot warn"; t.textContent = "Boten ser ut til å ha stoppet"; }
+  else { dot.className="dot"; t.textContent = "Boten har ikke kjørt ennå"; }
+  sub.textContent = s.last_run ? `Sist sjekket markedet ${ago(s.last_run)}. Sjekker hvert ${s.loop_minutes}. minutt.` : "Følg stegene under for å komme i gang.";
+  b.hidden = false;
+  b.className = "btn " + (s.killed ? "btn-go" : "btn-stop");
+  b.textContent = s.killed ? "Start handel igjen" : "Stopp all handel";
+  b.dataset.on = s.killed ? "0" : "1";
+
+  const banners = [];
+  if (s.killed) banners.push(`<div class="banner stop">Nødbremsen er på. Boten ser fortsatt på markedet, men kjøper og selger ingenting.</div>`);
+  if (s.status==="stale" && !s.killed) banners.push(`<div class="banner warn">Ingen runde siden ${ago(s.last_run)}. Sjekk at <code>python -m memebot run</code> fortsatt kjører.</div>`);
+  if (s.mode==="live") banners.push(`<div class="banner warn">Ekte penger er i bruk. Nødbremsen øverst stopper all handel umiddelbart fra neste runde.</div>`);
+  $("#banners").innerHTML = banners.join("");
+}
+
+function renderSteps(list){
+  const needed = list.filter(x => x.key !== "telegram");
+  $("#start").hidden = needed.every(x => x.done);
+  $("#steps").innerHTML = list.map((x,i) => `<li class="${x.done?"done":""}"><span class="mark">${x.done?"✓":i+1}</span>
+    <div><div class="t">${esc(x.text)}</div><div class="h">${esc(x.help).replace(/python -m memebot \w+/, m=>`<code>${m}</code>`)}</div></div></li>`).join("");
+}
+
+function renderValue(s){
+  $("#equity").textContent = usd(s.equity);
+  const diff = s.equity - s.start_capital, p = diff / s.start_capital * 100;
+  const ch = $("#change");
+  ch.className = "change " + (diff>=0 ? "up" : "down");
+  ch.textContent = `${usdS(diff)} (${pct(p)}) siden start på ${usd(s.start_capital)}`;
+  const L = s.limits;
+  $("#facts").innerHTML = `<span>Handler denne måneden <b>${L.trades_month} av ${L.max_trades_per_month}</b></span>
+    <span>Solgt med resultat i dag <b class="${s.realized_today>=0?"up":"down"}">${usdS(s.realized_today)}</b></span>
+    <span>Maks per kjøp <b>${usd(L.max_position_usd)}</b></span>
+    <span>Stopper kjøp ved dagstap på <b>${usd(L.max_daily_loss_usd)}</b></span>`;
+
+  const c = s.curve;
+  if (c.length < 2){ $("#chart").innerHTML = `<div class="empty">Grafen fylles ut etter hvert som boten kjører runder.</div>`; return; }
+  const W=600,Hh=160,pad=6, xs=c.map(d=>d[0]), ys=c.map(d=>d[1]).concat([s.start_capital]);
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  const X=v=>pad+(v-x0)/((x1-x0)||1)*(W-2*pad), Y=v=>Hh-pad-(v-y0)/((y1-y0)||1)*(Hh-2*pad);
+  const d = c.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join(" ");
+  const up = c[c.length-1][1] >= s.start_capital;
+  $("#chart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" aria-label="Verdi over tid">
+    <line x1="0" x2="${W}" y1="${Y(s.start_capital)}" y2="${Y(s.start_capital)}" stroke="var(--line)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+    <path d="${d} L ${X(x1)} ${Hh} L ${X(x0)} ${Hh} Z" fill="${up?"var(--buy-soft)":"var(--sell-soft)"}" opacity=".7"/>
+    <path d="${d}" fill="none" stroke="${up?"var(--buy)":"var(--sell)"}" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+  </svg><div class="hint" style="text-align:right">Stiplet linje = startbeløpet</div>`;
+}
+
+function renderBuckets(bs){
+  const total = bs.reduce((a,b)=>a+b.capital,0) || 1;
+  $("#bar").setAttribute("aria-label", bs.map(b=>`${b.label}: ${usd(b.capital)}, ${usd(b.cash)} ledig`).join("; "));
+  $("#bar").innerHTML = bs.map(b => {
+    const inv = b.capital ? Math.min(100, b.invested / b.capital * 100) : 0;
+    return `<div class="seg" style="flex:${b.capital/total}">
+      <div class="fill" style="width:${inv}%;background:${COLOR[b.key]}"></div><div class="cash"></div>
+      <span class="lbl" style="${inv<30?"color:var(--ink);text-shadow:none":""}">${b.capital/total<0.2?"":esc(b.label)+" "}${Math.round(b.capital/total*100)} %</span></div>`;
+  }).join("");
+  $("#legend").innerHTML = bs.map(b => `<div><div class="k"><span class="sw" style="background:${COLOR[b.key]}"></span><div>
+      <h3>${esc(b.label)}</h3><p>${esc(b.explain)}</p>
+      <dl><div><dt>Pott nå</dt><dd>${usd(b.capital)}</dd></div><div><dt>Kjøpt inn for</dt><dd>${usd(b.invested)}</dd></div>
+      <div><dt>Ledig</dt><dd>${usd(b.cash)}</dd></div><div><dt>Gevinst/tap solgt</dt><dd class="${b.realized>=0?"up":"down"}">${usdS(b.realized)}</dd></div></dl>
+    </div></div></div>`).join("");
+}
+
+function renderCards(ps){
+  if (!ps.length){ $("#cards").innerHTML = `<p class="emptytxt">Boten eier ingen coins ennå. Den kjøper først når prisen er lav nok og sikkerhetssjekken er bestått – det kan ta dager.</p>`; return; }
+  $("#cards").innerHTML = ps.map(p => {
+    let note = "";
+    if (p.dead) note = `<div class="note dead">Ned over 70 %. Regnes som tapt – boten kjøper ikke mer av denne.</div>`;
+    else {
+      const nextTp = 100 * (p.tp_hits + 1);
+      const prog = p.pnl_pct==null ? 0 : Math.max(0, Math.min(100, p.pnl_pct / nextTp * 100));
+      const buys = p.bucket==="core" ? ` Kjøpt i ${p.tranches} av 3 omganger.` : "";
+      note = `<div class="note">Neste gevinstsikring ved ${pct(nextTp)}.${buys}</div><div class="progress" title="Vei mot neste gevinstsikring"><i style="width:${prog}%"></i></div>`;
+    }
+    return `<div class="card ${p.bucket}"><div class="top"><span class="sym">${esc(p.symbol)}</span><span class="tag">${LABEL[p.bucket]}</span></div>
+      <div class="pnl ${p.pnl_pct==null?"":p.pnl_pct>=0?"up":"down"}">${pct(p.pnl_pct)}</div>
+      <div class="row"><span>Kjøpt for</span><b>${usd(p.cost)}</b></div>
+      <div class="row"><span>Verdi nå</span><b>${usd(p.value)}</b></div>${note}</div>`;
+  }).join("");
+}
+
+function renderFeed(ts){
+  if (!ts.length){ $("#feed").innerHTML = `<li><span></span><p class="emptytxt">Ingen kjøp eller salg ennå.</p></li>`; return; }
+  $("#feed").innerHTML = ts.slice(0,60).map(t => `<li>
+    <span class="pill ${t.side}">${t.side==="buy"?"Kjøpte":"Solgte"}</span>
+    <div><div class="what">${esc(t.symbol)} for ${usd(t.usd)} <span class="hint" style="display:inline">· ${LABEL[t.bucket]||t.bucket}</span></div>
+      <div class="why">${esc(explain(t.reason))}</div>
+      ${t.tx_sig?`<a href="https://solscan.io/tx/${encodeURIComponent(t.tx_sig)}" target="_blank" rel="noopener">Se transaksjonen</a>`:""}</div>
+    <span class="when">${ago(t.ts)}</span></li>`).join("");
+}
+
+function renderSide(s){
+  const r = s.last && s.last.rejected || [];
+  $("#rejects").innerHTML = r.length ? r.map(x => { const [sym, ...rest] = x.split(": ");
+      return `<li><b>${esc(sym)}</b>: ${esc(rest.join(": "))}</li>`; }).join("")
+    : `<li class="emptytxt">${s.last ? "Ingen coins ble avvist i siste runde." : "Vises etter første runde."}</li>`;
+  $("#log").innerHTML = s.events.length ? s.events.map(e => `<li><span class="when">${ago(e.ts)}</span><span class="${e.level}">${esc(e.msg)}</span></li>`).join("")
+    : `<li class="emptytxt">Ingen beskjeder ennå.</li>`;
+}
+
+function renderWallets(c){
+  const b = [];
+  if (!c.has_api_key) b.push(`<div class="banner info">Kopitrading trenger en PumpPortal-nøkkel. Lag en på pumpportal.fun, legg den i <code>.env</code> som PUMPPORTAL_API_KEY, og start <code>python -m memebot copy</code>.</div>`);
+  else if (c.enabled && c.weight <= 0) b.push(`<div class="banner warn">Kopitrading er på, men kopipotten er 0 %. Gi den en andel under «Fordeling av pottene».</div>`);
+  else if (!c.enabled && c.wallets.length) b.push(`<div class="banner info">Kopiering er av. Boten følger med og samler tall, men handler ikke.</div>`);
+  $("#copyBanner").innerHTML = b.join("");
+  if (!c.wallets.length){ $("#wallets").innerHTML = `<p class="emptytxt">Du følger ingen wallets ennå. Legg dem til under Innstillinger → Kopitrading.</p>`; return; }
+  const cls = v => /^Ser jevnt/.test(v) ? "good" : /Taper|én coin/.test(v) ? "bad" : "";
+  $("#wallets").innerHTML = `<table class="wtable"><thead><tr><th>Wallet</th><th class="num">Resultat</th><th class="num">Treff</th><th class="num">Coins</th><th class="num">Holder typisk</th><th>Vurdering</th></tr></thead><tbody>` +
+    c.wallets.map(w => `<tr>
+      <td class="wname"><b>${esc(w.label)}</b><code>${esc(w.address.slice(0,6))}…${esc(w.address.slice(-4))}</code>
+        <span class="hint">${w.last_seen ? "Sist aktiv " + ago(w.last_seen) : "Ingen handler sett ennå"}</span></td>
+      <td class="num ${w.realized_sol>=0?"up":"down"}" data-l="Resultat">${w.realized_sol>=0?"+":"−"}${nf.format(Math.abs(w.realized_sol))} SOL</td>
+      <td class="num" data-l="Treff">${w.win_rate==null?"–":Math.round(w.win_rate)+" %"}</td>
+      <td class="num" data-l="Coins">${w.coins}</td>
+      <td class="num" data-l="Holder">${w.median_hold_h==null?"–":w.median_hold_h<1?Math.round(w.median_hold_h*60)+" min":w.median_hold_h<48?nf.format(w.median_hold_h)+" t":Math.round(w.median_hold_h/24)+" d"}</td>
+      <td class="vcell"><span class="verdict ${cls(w.verdict)}">${esc(w.verdict)}</span></td></tr>`).join("") + `</tbody></table>`;
+}
+
+// ------------------------------------------------------------ innstillinger
+let settings = null, dirty = false;
+function fillSettings(st){
+  if (dirty) return;              // ikke overskriv det brukeren holder på med
+  settings = JSON.parse(JSON.stringify(st));
+  $("#s_cap").value = st.start_capital_usd; $("#s_loop").value = st.loop_minutes;
+  $("#s_pos").value = st.risk.max_position_usd; $("#s_loss").value = st.risk.max_daily_loss_usd;
+  $("#s_trades").value = st.risk.max_trades_per_month;
+  renderTokenList("core"); renderTokenList("rotation");
+  for (const [k,v] of Object.entries(st.buckets)) { const el = $(`#b_${k}`); if (el) el.value = v; }
+  bucketSum();
+  $("#c_on").checked = st.copy_enabled;
+  document.querySelectorAll('input[name=c_mode]').forEach(r => r.checked = r.value === st.copy_mode);
+  $("#c_buy").value = st.copy_buy_usd;
+  renderCopyList();
+}
+function bucketSum(){
+  const t = ["core","rotation","shots","copy"].reduce((a,k)=>a+(+$(`#b_${k}`).value||0),0);
+  const el = $("#bsum"); el.textContent = `Til sammen: ${nf.format(t)} %` + (Math.abs(t-100)>0.01 ? " – må være 100 %" : "");
+  el.className = "sum" + (Math.abs(t-100)>0.01 ? " bad" : "");
+}
+function renderCopyList(){
+  const list = settings.copy_wallets;
+  $("#copy_list").innerHTML = list.length ? list.map((w,i) => `<li><span><b>${esc(w.label||"Uten navn")}</b> <code>${esc(w.address.slice(0,6))}…${esc(w.address.slice(-4))}</code></span>
+    <button type="button" class="btn btn-quiet" data-cremove="${i}" aria-label="Slutt å følge ${esc(w.label||w.address)}">Fjern</button></li>`).join("")
+    : `<li class="emptytxt" style="border-style:dashed">Ingen wallets lagt til ennå.</li>`;
+}
+$("#copyAddBtn").addEventListener("click", () => {
+  const addr = $("#copy_add").value.trim(), label = $("#copy_label").value.trim();
+  const err = document.querySelector('.err[data-for="copy_wallets"]');
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)){ err.textContent = "Det ser ikke ut som en Solana-walletadresse."; return; }
+  if (settings.copy_wallets.some(w => w.address === addr)){ err.textContent = "Du følger allerede denne."; return; }
+  err.textContent = ""; settings.copy_wallets.push({address:addr, label});
+  $("#copy_add").value = ""; $("#copy_label").value = ""; renderCopyList(); markDirty();
+});
+["copy_add","copy_label"].forEach(id => $(`#${id}`).addEventListener("keydown", e => { if (e.key==="Enter"){ e.preventDefault(); $("#copyAddBtn").click(); } }));
+$("#settings").addEventListener("change", e => {
+  if (e.target.dataset.bucket !== undefined) bucketSum();
+  if (e.target.id === "c_on" || e.target.name === "c_mode") markDirty();
+});
+$("#settings").addEventListener("input", e => { if (e.target.dataset.bucket !== undefined) bucketSum(); });
+function renderTokenList(kind){
+  const list = settings[kind+"_tokens"];
+  $(`#${kind}_list`).innerHTML = list.length ? list.map((t,i) => `<li><span><b>${esc(t.symbol)}</b> <code>${esc(t.mint.slice(0,6))}…${esc(t.mint.slice(-4))}</code></span>
+    <button type="button" class="btn btn-quiet" data-remove="${kind}" data-i="${i}" aria-label="Fjern ${esc(t.symbol)}">Fjern</button></li>`).join("")
+    : `<li class="emptytxt" style="border-style:dashed">Ingen lagt til ennå.</li>`;
+}
+function markDirty(){ dirty = true; $("#dirty").textContent = "Du har endringer som ikke er lagret."; }
+$("#settings").addEventListener("input", e => { if (e.target.type==="number") markDirty(); });
+
+async function lookup(kind){
+  const input = $(`#${kind}_add`), out = $(`#${kind}_found`), mint = input.value.trim();
+  if (!mint){ out.textContent = "Lim inn en adresse først."; return; }
+  if (settings[kind+"_tokens"].some(t => t.mint===mint)){ out.textContent = "Denne er allerede lagt til."; return; }
+  out.textContent = "Slår opp …";
+  try{
+    const r = await fetch(`/api/lookup${q ? q+"&" : "?"}mint=${encodeURIComponent(mint)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    settings[kind+"_tokens"].push({mint, symbol:j.symbol});
+    out.innerHTML = `Lagt til <b>${esc(j.symbol)}</b> – pris ${usd(j.price_usd)}, handel siste døgn ${usd(j.volume_24h_usd)}. Husk å lagre.`;
+  }catch(err){
+    // Tillat å legge til uten oppslag hvis adressen er gyldig men nettet er nede
+    if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)){
+      settings[kind+"_tokens"].push({mint, symbol:"?"});
+      out.textContent = `Fant ikke navnet (${err.message}). La den til likevel – husk å lagre.`;
+    } else { out.textContent = err.message || "Ugyldig adresse."; return; }
+  }
+  input.value = ""; renderTokenList(kind); markDirty();
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-add]"); if (a) return lookup(a.dataset.add);
+  const cr = e.target.closest("[data-cremove]");
+  if (cr){ settings.copy_wallets.splice(+cr.dataset.cremove,1); renderCopyList(); markDirty(); return; }
+  const r = e.target.closest("[data-remove]");
+  if (r){ settings[r.dataset.remove+"_tokens"].splice(+r.dataset.i,1); renderTokenList(r.dataset.remove); markDirty(); }
+});
+["core","rotation"].forEach(k => $(`#${k}_add`).addEventListener("keydown", e => { if (e.key==="Enter"){ e.preventDefault(); lookup(k); } }));
+
+$("#settings").addEventListener("submit", async e => {
+  e.preventDefault();
+  document.querySelectorAll(".err").forEach(x => x.textContent = "");
+  const body = { start_capital_usd:$("#s_cap").value, loop_minutes:$("#s_loop").value,
+    risk:{max_position_usd:$("#s_pos").value, max_daily_loss_usd:$("#s_loss").value, max_trades_per_month:$("#s_trades").value},
+    core_tokens:settings.core_tokens, rotation_tokens:settings.rotation_tokens,
+    buckets:Object.fromEntries(["core","rotation","shots","copy"].map(k=>[k, $(`#b_${k}`).value])),
+    copy_enabled:$("#c_on").checked,
+    copy_mode:(document.querySelector('input[name=c_mode]:checked')||{}).value,
+    copy_buy_usd:$("#c_buy").value, copy_wallets:settings.copy_wallets };
+  const btn = $("#saveBtn"); btn.disabled = true;
+  try{
+    const r = await fetch("/api/settings"+q, {method:"POST", headers:H, body:JSON.stringify(body)});
+    const j = await r.json();
+    if (!r.ok){
+      Object.entries(j.errors||{}).forEach(([k,v]) => { const el = document.querySelector(`.err[data-for="${k}"]`); if (el) el.textContent = v; });
+      toast(j.errors ? "Noen felt må rettes – se rødt under feltene." : (j.error || "Kunne ikke lagre."));
+      return;
+    }
+    dirty = false; $("#dirty").textContent = "";
+    toast("Innstillinger lagret. Boten bruker dem fra neste runde.");
+    refresh();
+  } finally { btn.disabled = false; }
+});
+
+$("#killBtn").addEventListener("click", async e => {
+  const on = e.currentTarget.dataset.on === "1";
+  if (on && !confirm("Stoppe all handel? Boten kjøper og selger ingenting før du starter den igjen.")) return;
+  e.currentTarget.disabled = true;
+  try{
+    await fetch("/api/kill"+q, {method:"POST", headers:H, body:JSON.stringify({on})});
+    toast(on ? "Handel stoppet." : "Handel startet igjen fra neste runde.");
+    await refresh();
+  } finally { e.currentTarget.disabled = false; }
+});
+
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 4000); }
+
+async function refresh(){
+  try{
+    const r = await fetch("/api/state"+q, {cache:"no-store"});
+    const s = await r.json();
+    if (!r.ok) throw new Error(s.error);
+    renderStatus(s); renderSteps(s.checklist); renderValue(s); renderBuckets(s.buckets);
+    renderCards(s.positions); renderFeed(s.trades); renderWallets(s.copy); renderSide(s); fillSettings(s.settings);
+  }catch(err){
+    $("#dot").className = "dot bad";
+    $("#statusText").textContent = "Får ikke kontakt med boten";
+    $("#statusSub").textContent = `${err.message || err}. Sjekk at dashboardet fortsatt kjører.`;
+  }
+}
+refresh(); setInterval(refresh, 20000);
+</script>
+</body>
+</html>
